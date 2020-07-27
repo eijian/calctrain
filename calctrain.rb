@@ -20,15 +20,16 @@ end
 
 def question_1
     nrange = Range.new(-99, 99)
-    orange = Range.new(0,1)
+    #orange = Range.new(0,1)
     x = @rand.rand(nrange)
     y = @rand.rand(nrange)
-    op = if @rand.rand(orange) == 1 then 1 else -1 end
+    a = x + y
+    op = 1
     if y < 0
         op = -op
         y = -y
     end
-    return "#{x} #{if op <= 0 then '-' else '+' end} #{y} = ?　", x + op * y
+    return "#{x} #{if op < 0 then '-' else '+' end} #{y} = ?　", a
 end
 
 def question_2
