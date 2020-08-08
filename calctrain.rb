@@ -1,18 +1,20 @@
 #!/usr/bin/ruby
 #
 
-STEP = 3
-NQ = 5
+STEP = 4
+NQ = 50
 ANS_OK = 2
 ANS_NG = 1
 ANS_UN = 0
 ANSWER = Array.new(NQ, ANS_UN)
-LIMIT = [5, 5, 10]
+LIMIT = [5, 5, 10, 10]
 TITLE = [
     "2桁の加減算",
     "3數の乗算",
     "xの一次方程式",
+    "分数の約分",
 ]
+LOGFILE = 'calctrain.csv'
 
 def init
     @ans = Array.new(STEP, ANSWER)
@@ -67,7 +69,7 @@ def question_3
     
     ans =
         if a2 == 0
-            'nan'           
+            '--'           
         elsif d2 == 0
             '0'
         elsif a2.abs / m == 1
@@ -80,33 +82,19 @@ def question_3
 end
 
 def question_4
-    range0 = Range.new(0, 1)
-    range1 = Range.new(1, 9)
-    range2 = Range.new(-9, 9)
-    range3 = Range.new(1, 25)
-    as = if @rand.rand(range0) == 0 then -1 else 1 end
+    range1 = Range.new(1, 10)
+    range2 = Range.new(2, 13)
+
     a0 = @rand.rand(range1)
-    bs = if @rand.rand(range0) == 0 then -1 else 1 end
     b0 = @rand.rand(range1)
-    c0 = @rand.rand(range2)
-    m0 = @rand.rand(range3)
-    s  = if (c0 - b0*bs) * as < 0 then '-' else '' end
-    d  = c0 - b0*bs
-    m  = m0 * d.gcd(a0)
-    a  = a0 * m0
-    b  = b0 * m0
-    c  = c0 * m0
+    m0 = @rand.rand(range2)
 
-    ans =
-        if c - b*bs == 0 then
-            '0'
-        elsif a == m then
-            "#{s}#{(c - b*bs).abs / m}"
-        else
-            "#{s}#{(c - b*bs).abs / m}/#{a / m}"
-        end
+    m = a0.gcd(b0)
+    a = a0 / m
+    b = b0 / m
+    ans = "#{a}" + (if b == 1 then '' else "/#{b}" end)
 
-    return "#{a * as} x #{if bs < 0 then '-' else '+' end} #{b} = #{c}:  x = ? ", ans
+    return "#{a0 * m0}/#{b0 * m0} = ? ", ans
 end
 
 def q_and_a(q, a)
@@ -134,6 +122,8 @@ def question(s)
             question_2
         when 2 then
             question_3
+        when 3 then
+            question_4
         else
             puts "Wrong step"
         end
@@ -147,14 +137,47 @@ end
 def report(s, tm)
     resp = @ans[s].select {|a| a != ANS_UN}
     corr = @ans[s].select {|a| a == ANS_OK}
-    rep = <<EOF
+    rep = [
+        resp.size, rate(resp),
+        corr.size, rate(corr),
+        tm, tm / resp.size,
+    ]
+end
 
-(STEP #{s+1})
-  RESPONSE: #{resp.size}/#{NQ}  #{sprintf("% 3.1f %", rate(resp))}
-  CORRECT : #{corr.size}/#{NQ}  #{sprintf("% 3.1f %", rate(corr))}
-  TIME    : #{sprintf("% 3.1f sec", tm)} (#{sprintf("% 3.1f sec/Q", tm / resp.size)})"
+def create_repfile
+    if File.exist?(LOGFILE) == false
+        File.open(LOGFILE, 'w') do |fp|
+            header = <<EOF
+DATETIME,STEP,nquestion,res,res%,corr,corr%,time(sec),speed(sec/Q)
 EOF
-    rep
+            fp.puts header
+        end
+    end
+end
+
+def display_report(rep)
+    # display
+    puts ""
+    puts "REPORT:"
+    STEP.times do |s|
+        body = <<EOF
+(STEP #{s+1})
+  RESPONSE: #{rep[s][0]}/#{NQ}  #{sprintf("% 3.1f %", rep[s][1])}
+  CORRECT : #{rep[s][2]}/#{NQ}  #{sprintf("% 3.1f %", rep[s][3])}
+  TIME    : #{sprintf("%3.1f sec", rep[s][4])} (#{sprintf("% 3.1f sec/Q", rep[s][5])})
+    
+EOF
+        puts body
+    end
+
+    # CSV output
+    create_repfile
+    dt = Time.now.strftime("%Y%m%d-%H%M%S")
+    File.open(LOGFILE, 'a') do |fp|
+        STEP.times do |s|
+            fp.puts "#{dt},#{s+1},#{NQ},#{rep[s].join(',')}"
+        end
+    end
 end
 
 def wait_nsec(n)
@@ -180,11 +203,7 @@ def main
         tm = Time.now - t0
         rep << report(s, tm)
     end
-    puts ""
-    puts "REPORT:"
-    STEP.times do |s|
-        puts rep[s]
-    end
+    display_report(rep)
 end
 
 main
